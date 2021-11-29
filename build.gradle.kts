@@ -1,8 +1,12 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jmailen.gradle.kotlinter.tasks.LintTask
 
 plugins {
-    kotlin("jvm") version "1.5.10"
+    kotlin("jvm") version "1.6.0"
     application
+    id("com.github.johnrengelman.shadow") version "7.1.0"
+    id("org.jmailen.kotlinter") version "3.7.0"
 }
 
 group = "org.lange"
@@ -10,18 +14,37 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    gradlePluginPortal()
 }
 
 dependencies {
     testImplementation(kotlin("test"))
 }
 
-tasks.test {
-    useJUnitPlatform()
-}
+tasks {
+    named<ShadowJar>("shadowJar") {
+        archiveBaseName.set("shadow-klox")
+        mergeServiceFiles()
+        manifest {
+            attributes(mapOf("Main-Class" to "org.lange.interpreters.klox.KLox"))
+        }
+    }
 
-tasks.withType<KotlinCompile>() {
-    kotlinOptions.jvmTarget = "11"
+    named<LintTask>("lintKotlinMain") {
+        exclude("**/generated/*.kt")
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    withType<KotlinCompile>() {
+        kotlinOptions.jvmTarget = "11"
+    }
 }
 
 application {

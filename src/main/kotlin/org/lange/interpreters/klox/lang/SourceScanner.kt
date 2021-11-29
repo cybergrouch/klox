@@ -1,6 +1,12 @@
 package org.lange.interpreters.klox.lang
 
 import org.lange.interpreters.klox.ReporterService
+import org.lange.interpreters.klox.lang.Constants.DIGIT_RANGE
+import org.lange.interpreters.klox.lang.Constants.KEYWORDS
+import org.lange.interpreters.klox.lang.Constants.isAlpha
+import org.lange.interpreters.klox.lang.Constants.isAlphaNumeric
+import org.lange.interpreters.klox.lang.Constants.isDigit
+import org.lange.interpreters.klox.lang.Constants.match
 
 class SourceScanner(
     private val reporterService: ReporterService,
@@ -20,7 +26,7 @@ class SourceScanner(
         tokens.add(
             element = Token(
                 type = TokenType.EOF,
-                lexeme = "",
+                lexeme = Constants.BLANK,
                 line = line
             )
         )
@@ -28,82 +34,91 @@ class SourceScanner(
     }
 
     private fun scanToken() {
-        when (advance()) {
-            '(' -> addToken(type = TokenType.LEFT_PARENTHESIS)
-            ')' -> addToken(type = TokenType.RIGHT_PARENTHESIS)
-            '{' -> addToken(type = TokenType.LEFT_BRACE)
-            '}' -> addToken(type = TokenType.RIGHT_BRACE)
-            ',' -> addToken(type = TokenType.COMMA)
-            '.' -> addToken(type = TokenType.DOT)
-            '-' -> addToken(type = TokenType.MINUS)
-            '+' -> addToken(type = TokenType.PLUS)
-            ';' -> addToken(type = TokenType.SEMICOLON)
-            '*' -> addToken(type = TokenType.STAR)
+        when (val c = advance()) {
+            Constants.LEFT_PARENTHESIS -> addToken(type = TokenType.LEFT_PARENTHESIS)
+            Constants.RIGHT_PARENTHESIS -> addToken(type = TokenType.RIGHT_PARENTHESIS)
+            Constants.LEFT_BRACE -> addToken(type = TokenType.LEFT_BRACE)
+            Constants.RIGHT_BRACE -> addToken(type = TokenType.RIGHT_BRACE)
+            Constants.COMMA -> addToken(type = TokenType.COMMA)
+            Constants.DOT -> addToken(type = TokenType.DOT)
+            Constants.MINUS -> addToken(type = TokenType.MINUS)
+            Constants.PLUS -> addToken(type = TokenType.PLUS)
+            Constants.SEMICOLON -> addToken(type = TokenType.SEMICOLON)
+            Constants.STAR -> addToken(type = TokenType.STAR)
 
-            '!' -> addToken(
+            Constants.BANG -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.BANG_EQUAL },
-                    unmatchHandler = { TokenType.BANG }
+                    unMatchHandler = { TokenType.BANG }
                 )
             )
-            '=' -> addToken(
+            Constants.EQUAL -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.EQUAL_EQUAL },
-                    unmatchHandler = { TokenType.EQUAL }
+                    unMatchHandler = { TokenType.EQUAL }
                 )
             )
-            '<' -> addToken(
+            Constants.LESS -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.LESS_EQUAL },
-                    unmatchHandler = { TokenType.LESS }
+                    unMatchHandler = { TokenType.LESS }
                 )
             )
-            '>' -> addToken(
+            Constants.GREATER -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.GREATER_EQUAL },
-                    unmatchHandler = { TokenType.GREATER }
+                    unMatchHandler = { TokenType.GREATER }
                 )
             )
 
-            '/' -> matcher(
-                expected = '/',
+            Constants.SLASH -> matcher(
+                expected = Constants.SLASH,
                 matchHandler = { lineComment() },
-                unmatchHandler = {
+                unMatchHandler = {
                     addToken(type = TokenType.SLASH)
                 }
             )
 
-            ' ', '\r', '\t' -> {}
+            Constants.SPACE,
+            Constants.CARRIAGE_RETURN,
+            Constants.TAB -> {
+            }
 
-            '\n' -> line++
+            Constants.NEW_LINE -> line++
 
-            '"' -> string()
+            Constants.DOUBLE_QUOTE -> string()
 
-            else -> reporterService.error(
-                line = line,
-                message = "Unexpected character."
-            )
+            in DIGIT_RANGE -> number()
+
+            else ->
+                when {
+                    c.isAlpha() -> identifier()
+                    else -> reporterService.error(
+                        line = line,
+                        message = "Unexpected character: ${peek()}"
+                    )
+                }
         }
     }
 
     private fun lineComment() {
-        while (peek() != '\n' && !isAtEnd()) {
+        while (peek() != Constants.NEW_LINE && !isAtEnd()) {
             advance()
         }
         parseToTokenType(
             tokenType = TokenType.LINE_COMMENT,
             startIndex = start + 2,
             endIndex = current
-        )
+        ).appendToList()
     }
 
     private fun string() {
-        while (peek() != '"' && !isAtEnd()) {
-            peek().takeIf { c -> c == '\n' }?.let { line++ }
+        while (peek() != Constants.DOUBLE_QUOTE && !isAtEnd()) {
+            peek().takeIf { c -> c == Constants.NEW_LINE }?.let { line++ }
             advance()
         }
 
@@ -123,12 +138,63 @@ class SourceScanner(
         }
     }
 
-    private fun <R> matcher(expected: Char, matchHandler: () -> R, unmatchHandler: () -> R): R =
+    private fun number() {
+        while (peek().isDigit()) {
+            advance()
+        }
+        when {
+            peek().match(expected = Constants.DOT) && peekNext().isDigit() -> {
+                advance()
+                while (peek().isDigit()) {
+                    advance()
+                }
+                parseToTokenType(
+                    tokenType = TokenType.NUMBER,
+                    startIndex = start,
+                    endIndex = current,
+                    literalParser = { literalStr -> literalStr.toDouble() }
+                ).appendToList()
+            }
+            peek().match(expected = Constants.DOT) && peekNext().isDigit().not() -> {
+                reporterService.error(
+                    line = line,
+                    message = "Missing fractional part of number."
+                )
+            }
+            else -> {
+                parseToTokenType(
+                    tokenType = TokenType.NUMBER,
+                    startIndex = start,
+                    endIndex = current,
+                    literalParser = { literalStr -> literalStr.toDouble() }
+                ).appendToList()
+            }
+        }
+    }
+
+    private fun identifier() {
+        while (peek().isAlphaNumeric()) advance()
+
+        parseLexeme().let { lexeme ->
+            KEYWORDS[lexeme]?.let {
+                Pair(it, lexeme)
+            } ?: run {
+                Pair(TokenType.IDENTIFIER, lexeme)
+            }
+        }.let { (tokenType, lexeme) ->
+            asToken(
+                type = tokenType,
+                lexeme = lexeme
+            ).appendToList()
+        }
+    }
+
+    private fun <R> matcher(expected: Char, matchHandler: () -> R, unMatchHandler: () -> R): R =
         if (matched(expected = expected)) {
             advance()
             matchHandler()
         } else
-            unmatchHandler()
+            unMatchHandler()
 
     private fun matched(expected: Char): Boolean =
         when {
@@ -136,38 +202,46 @@ class SourceScanner(
             else -> false
         }
 
-    private fun peek(): Char = if (isAtEnd()) '\u0000' else sourceCharArray.elementAt(current)
+    private fun peek(offset: Int = 0): Char =
+        if (isAtEnd(offset = offset)) Constants.NULL else sourceCharArray.elementAt(current + offset)
 
-    private fun isAtEnd(): Boolean = current >= source.length
+    private fun peekNext(): Char = peek(offset = 1)
 
-    private fun advance(): Char = with(current++) {
-        sourceCharArray.elementAt(index = this)
-    }
+    private fun isAtEnd(offset: Int = 0): Boolean = current + offset >= source.length
 
-    private fun addToken(type: TokenType, literal: Any? = null) {
-        source.subSequence(startIndex = start, endIndex = current).toString().let { lexeme ->
-            tokens.add(
-                Token(
-                    type = type,
-                    lexeme = lexeme,
-                    literal = literal,
-                    line = line
-                )
-            )
-        }
-    }
+    private fun advance(): Char = sourceCharArray.elementAt(index = current++)
 
-    private fun parseToTokenType(tokenType: TokenType, startIndex: Int, endIndex: Int) =
+    private fun asToken(type: TokenType, lexeme: String = parseLexeme(), literal: Any? = null): Token =
+        Token(
+            type = type,
+            lexeme = lexeme,
+            literal = literal,
+            line = line
+        )
+
+    private fun addToken(type: TokenType, literal: Any? = null) =
+        asToken(type = type, literal = literal).appendToList()
+
+    private fun parseToTokenType(
+        tokenType: TokenType,
+        startIndex: Int,
+        endIndex: Int,
+        literalParser: (String) -> Any? = { str -> str }
+    ) =
         when {
             startIndex < endIndex -> source.substring(
                 startIndex = startIndex,
                 endIndex = endIndex
             )
-            else -> ""
+            else -> Constants.BLANK
         }.let { literal ->
-            addToken(
+            asToken(
                 type = tokenType,
-                literal = literal
+                literal = literalParser(literal)
             )
         }
+
+    private fun parseLexeme() = source.subSequence(startIndex = start, endIndex = current).toString()
+
+    private fun Token.appendToList() = tokens.add(element = this)
 }

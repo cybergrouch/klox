@@ -23,6 +23,7 @@ dependencies {
     // Koin Core features
     implementation("io.insert-koin:koin-core:$koin_version")
     implementation("io.github.microutils:kotlin-logging:2.0.8")
+    implementation("org.slf4j:slf4j-simple:1.7.32")
 
     testImplementation(kotlin("test"))
     testImplementation("io.insert-koin:koin-test:$koin_version")
@@ -58,5 +59,5 @@ tasks {
 }
 
 application {
-    mainClass.set("MainKt")
+    mainClass.set("org.lange.interpreters.klox.MainKt")
 }

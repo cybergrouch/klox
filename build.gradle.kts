@@ -1,9 +1,9 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jmailen.gradle.kotlinter.tasks.LintTask
 
 plugins {
-    kotlin("jvm") version "1.6.0"
+    kotlin("jvm") version "1.5.31"
     application
     id("com.github.johnrengelman.shadow") version "7.1.0"
     id("org.jmailen.kotlinter") version "3.7.0"
@@ -12,13 +12,23 @@ plugins {
 group = "org.lange"
 version = "1.0-SNAPSHOT"
 
+var koin_version = "3.1.4"
+
 repositories {
     mavenCentral()
     gradlePluginPortal()
 }
 
 dependencies {
+    // Koin Core features
+    implementation("io.insert-koin:koin-core:$koin_version")
+    implementation("io.github.microutils:kotlin-logging:2.0.8")
+
     testImplementation(kotlin("test"))
+    testImplementation("io.insert-koin:koin-test:$koin_version")
+    testImplementation("io.insert-koin:koin-test-junit5:$koin_version")
+
+
 }
 
 tasks {

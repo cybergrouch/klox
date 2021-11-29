@@ -2,6 +2,7 @@ package org.lange.interpreters.klox.lang
 
 import org.lange.interpreters.klox.ReporterService
 import org.lange.interpreters.klox.lang.Constants.DIGIT_RANGE
+import org.lange.interpreters.klox.lang.Constants.KEYWORDS
 import org.lange.interpreters.klox.lang.Constants.isAlpha
 import org.lange.interpreters.klox.lang.Constants.isAlphaNumeric
 import org.lange.interpreters.klox.lang.Constants.isDigit
@@ -173,7 +174,19 @@ class SourceScanner(
 
     private fun identifier() {
         while (peek().isAlphaNumeric()) advance()
-        addToken(type = TokenType.IDENTIFIER)
+
+        parseLexeme().let { lexeme ->
+            KEYWORDS[lexeme]?.let {
+                Pair(it, lexeme)
+            } ?: run {
+                Pair(TokenType.IDENTIFIER, lexeme)
+            }
+        }.let { (tokenType, lexeme) ->
+            asToken(
+                type = tokenType,
+                lexeme = lexeme
+            ).appendToList()
+        }
     }
 
     private fun <R> matcher(expected: Char, matchHandler: () -> R, unMatchHandler: () -> R): R =

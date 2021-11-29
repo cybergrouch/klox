@@ -20,7 +20,7 @@ class SourceScanner(
         tokens.add(
             element = Token(
                 type = TokenType.EOF,
-                lexeme = "",
+                lexeme = Constants.BLANK,
                 line = line
             )
         )
@@ -29,59 +29,62 @@ class SourceScanner(
 
     private fun scanToken() {
         when (advance()) {
-            '(' -> addToken(type = TokenType.LEFT_PARENTHESIS)
-            ')' -> addToken(type = TokenType.RIGHT_PARENTHESIS)
-            '{' -> addToken(type = TokenType.LEFT_BRACE)
-            '}' -> addToken(type = TokenType.RIGHT_BRACE)
-            ',' -> addToken(type = TokenType.COMMA)
-            '.' -> addToken(type = TokenType.DOT)
-            '-' -> addToken(type = TokenType.MINUS)
-            '+' -> addToken(type = TokenType.PLUS)
-            ';' -> addToken(type = TokenType.SEMICOLON)
-            '*' -> addToken(type = TokenType.STAR)
+            Constants.LEFT_PARENTHESIS -> addToken(type = TokenType.LEFT_PARENTHESIS)
+            Constants.RIGHT_PARENTHESIS -> addToken(type = TokenType.RIGHT_PARENTHESIS)
+            Constants.LEFT_BRACE -> addToken(type = TokenType.LEFT_BRACE)
+            Constants.RIGHT_BRACE -> addToken(type = TokenType.RIGHT_BRACE)
+            Constants.COMMA -> addToken(type = TokenType.COMMA)
+            Constants.DOT -> addToken(type = TokenType.DOT)
+            Constants.MINUS -> addToken(type = TokenType.MINUS)
+            Constants.PLUS -> addToken(type = TokenType.PLUS)
+            Constants.SEMICOLON -> addToken(type = TokenType.SEMICOLON)
+            Constants.STAR -> addToken(type = TokenType.STAR)
 
-            '!' -> addToken(
+            Constants.BANG -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.BANG_EQUAL },
-                    unmatchHandler = { TokenType.BANG }
+                    unMatchHandler = { TokenType.BANG }
                 )
             )
-            '=' -> addToken(
+            Constants.EQUAL -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.EQUAL_EQUAL },
-                    unmatchHandler = { TokenType.EQUAL }
+                    unMatchHandler = { TokenType.EQUAL }
                 )
             )
-            '<' -> addToken(
+            Constants.LESS -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.LESS_EQUAL },
-                    unmatchHandler = { TokenType.LESS }
+                    unMatchHandler = { TokenType.LESS }
                 )
             )
-            '>' -> addToken(
+            Constants.GREATER -> addToken(
                 type = matcher(
-                    expected = '=',
+                    expected = Constants.EQUAL,
                     matchHandler = { TokenType.GREATER_EQUAL },
-                    unmatchHandler = { TokenType.GREATER }
+                    unMatchHandler = { TokenType.GREATER }
                 )
             )
 
-            '/' -> matcher(
-                expected = '/',
+            Constants.SLASH -> matcher(
+                expected = Constants.SLASH,
                 matchHandler = { lineComment() },
-                unmatchHandler = {
+                unMatchHandler = {
                     addToken(type = TokenType.SLASH)
                 }
             )
 
-            ' ', '\r', '\t' -> {}
+            Constants.SPACE,
+            Constants.CARRIAGE_RETURN,
+            Constants.TAB -> {
+            }
 
-            '\n' -> line++
+            Constants.NEW_LINE -> line++
 
-            '"' -> string()
+            Constants.DOUBLE_QUOTE -> string()
 
             else -> reporterService.error(
                 line = line,
@@ -91,7 +94,7 @@ class SourceScanner(
     }
 
     private fun lineComment() {
-        while (peek() != '\n' && !isAtEnd()) {
+        while (peek() != Constants.NEW_LINE && !isAtEnd()) {
             advance()
         }
         parseToTokenType(
@@ -102,8 +105,8 @@ class SourceScanner(
     }
 
     private fun string() {
-        while (peek() != '"' && !isAtEnd()) {
-            peek().takeIf { c -> c == '\n' }?.let { line++ }
+        while (peek() != Constants.DOUBLE_QUOTE && !isAtEnd()) {
+            peek().takeIf { c -> c == Constants.NEW_LINE }?.let { line++ }
             advance()
         }
 
@@ -123,12 +126,12 @@ class SourceScanner(
         }
     }
 
-    private fun <R> matcher(expected: Char, matchHandler: () -> R, unmatchHandler: () -> R): R =
+    private fun <R> matcher(expected: Char, matchHandler: () -> R, unMatchHandler: () -> R): R =
         if (matched(expected = expected)) {
             advance()
             matchHandler()
         } else
-            unmatchHandler()
+            unMatchHandler()
 
     private fun matched(expected: Char): Boolean =
         when {
@@ -136,7 +139,7 @@ class SourceScanner(
             else -> false
         }
 
-    private fun peek(): Char = if (isAtEnd()) '\u0000' else sourceCharArray.elementAt(current)
+    private fun peek(): Char = if (isAtEnd()) Constants.NULL else sourceCharArray.elementAt(current)
 
     private fun isAtEnd(): Boolean = current >= source.length
 
@@ -163,7 +166,7 @@ class SourceScanner(
                 startIndex = startIndex,
                 endIndex = endIndex
             )
-            else -> ""
+            else -> Constants.BLANK
         }.let { literal ->
             addToken(
                 type = tokenType,

@@ -1,7 +1,16 @@
 package org.lange.interpreters.klox
 
-class SourceProcessorServiceImpl : SourceProcessorService {
+import org.lange.interpreters.klox.lang.SourceScanner
+
+class SourceProcessorServiceImpl(
+    private val reporterService: ReporterService
+) : SourceProcessorService {
     override fun process(source: String) {
-        println("Run: $source")
+        SourceScanner(
+            reporterService = reporterService,
+            source = source
+        ).scanTokens().forEach { token ->
+            println("Token: $token")
+        }
     }
 }

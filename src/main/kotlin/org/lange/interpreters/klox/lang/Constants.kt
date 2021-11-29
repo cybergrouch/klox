@@ -26,4 +26,12 @@ object Constants {
     const val NULL = '\u0000'
 
     const val BLANK = ""
+
+    const val DIGIT_0 = '0'
+    const val DIGIT_9 = '9'
+    val DIGIT_RANGE = DIGIT_0..DIGIT_9
+
+    fun Char.isDigit(): Boolean = this in DIGIT_RANGE
+
+    fun Char.match(expected: Char): Boolean = (this == expected)
 }

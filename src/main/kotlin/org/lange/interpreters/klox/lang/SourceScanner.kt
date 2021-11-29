@@ -1,6 +1,9 @@
 package org.lange.interpreters.klox.lang
 
 import org.lange.interpreters.klox.ReporterService
+import org.lange.interpreters.klox.lang.Constants.DIGIT_RANGE
+import org.lange.interpreters.klox.lang.Constants.isDigit
+import org.lange.interpreters.klox.lang.Constants.match
 
 class SourceScanner(
     private val reporterService: ReporterService,
@@ -86,6 +89,8 @@ class SourceScanner(
 
             Constants.DOUBLE_QUOTE -> string()
 
+            in DIGIT_RANGE -> number()
+
             else -> reporterService.error(
                 line = line,
                 message = "Unexpected character."
@@ -101,7 +106,7 @@ class SourceScanner(
             tokenType = TokenType.LINE_COMMENT,
             startIndex = start + 2,
             endIndex = current
-        )
+        ).appendToList()
     }
 
     private fun string() {
@@ -126,6 +131,40 @@ class SourceScanner(
         }
     }
 
+    private fun number() {
+        while (peek().isDigit()) {
+            advance()
+        }
+        when {
+            peek().match(expected = Constants.DOT) && peekNext().isDigit() -> {
+                advance()
+                while (peek().isDigit()) {
+                    advance()
+                }
+                parseToTokenType(
+                    tokenType = TokenType.NUMBER,
+                    startIndex = start,
+                    endIndex = current,
+                    literalParser = { literalStr -> literalStr.toDouble() }
+                ).appendToList()
+            }
+            peek().match(expected = Constants.DOT) && peekNext().isDigit().not() -> {
+                reporterService.error(
+                    line = line,
+                    message = "Missing fractional part of number."
+                )
+            }
+            else -> {
+                parseToTokenType(
+                    tokenType = TokenType.NUMBER,
+                    startIndex = start,
+                    endIndex = current,
+                    literalParser = { literalStr -> literalStr.toDouble() }
+                ).appendToList()
+            }
+        }
+    }
+
     private fun <R> matcher(expected: Char, matchHandler: () -> R, unMatchHandler: () -> R): R =
         if (matched(expected = expected)) {
             advance()
@@ -139,28 +178,34 @@ class SourceScanner(
             else -> false
         }
 
-    private fun peek(): Char = if (isAtEnd()) Constants.NULL else sourceCharArray.elementAt(current)
+    private fun peek(offset: Int = 0): Char =
+        if (isAtEnd(offset = offset)) Constants.NULL else sourceCharArray.elementAt(current + offset)
 
-    private fun isAtEnd(): Boolean = current >= source.length
+    private fun peekNext(): Char = peek(offset = 1)
+
+    private fun isAtEnd(offset: Int = 0): Boolean = current + offset >= source.length
 
     private fun advance(): Char = with(current++) {
         sourceCharArray.elementAt(index = this)
     }
 
-    private fun addToken(type: TokenType, literal: Any? = null) {
-        source.subSequence(startIndex = start, endIndex = current).toString().let { lexeme ->
-            tokens.add(
-                Token(
-                    type = type,
-                    lexeme = lexeme,
-                    literal = literal,
-                    line = line
-                )
-            )
-        }
-    }
+    private fun asToken(type: TokenType, lexeme: String = parseLexeme(), literal: Any? = null): Token =
+        Token(
+            type = type,
+            lexeme = lexeme,
+            literal = literal,
+            line = line
+        )
 
-    private fun parseToTokenType(tokenType: TokenType, startIndex: Int, endIndex: Int) =
+    private fun addToken(type: TokenType, literal: Any? = null) =
+        asToken(type = type, literal = literal).appendToList()
+
+    private fun parseToTokenType(
+        tokenType: TokenType,
+        startIndex: Int,
+        endIndex: Int,
+        literalParser: (String) -> Any? = { str -> str }
+    ) =
         when {
             startIndex < endIndex -> source.substring(
                 startIndex = startIndex,
@@ -168,9 +213,13 @@ class SourceScanner(
             )
             else -> Constants.BLANK
         }.let { literal ->
-            addToken(
+            asToken(
                 type = tokenType,
-                literal = literal
+                literal = literalParser(literal)
             )
         }
+
+    private fun parseLexeme() = source.subSequence(startIndex = start, endIndex = current).toString()
+
+    private fun Token.appendToList() = tokens.add(element = this)
 }

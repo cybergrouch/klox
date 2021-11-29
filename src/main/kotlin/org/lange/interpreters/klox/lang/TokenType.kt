@@ -49,5 +49,4 @@ enum class TokenType {
 
     LINE_COMMENT,
     EOF
-
 }

@@ -127,8 +127,7 @@ class SourceScanner(
         if (matched(expected = expected)) {
             advance()
             matchHandler()
-        }
-        else
+        } else
             unmatchHandler()
 
     private fun matched(expected: Char): Boolean =
@@ -141,7 +140,7 @@ class SourceScanner(
 
     private fun isAtEnd(): Boolean = current >= source.length
 
-    private fun advance(): Char = with (current++) {
+    private fun advance(): Char = with(current++) {
         sourceCharArray.elementAt(index = this)
     }
 

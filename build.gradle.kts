@@ -23,7 +23,7 @@ dependencies {
 
 tasks {
     named<ShadowJar>("shadowJar") {
-        archiveBaseName.set("shadow")
+        archiveBaseName.set("shadow-klox")
         mergeServiceFiles()
         manifest {
             attributes(mapOf("Main-Class" to "org.lange.interpreters.klox.KLox"))

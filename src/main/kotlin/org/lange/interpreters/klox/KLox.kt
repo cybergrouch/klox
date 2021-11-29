@@ -10,7 +10,8 @@ object KLox {
         val kLoxModule = module {
             single<LoggingService> { LoggingServiceImpl() }
             single<FileProcessorService> { FileProcessorServiceImpl(loggingService = get()) }
-            single<SourceProcessorService> { SourceProcessorServiceImpl() }
+            single<SourceProcessorService> { SourceProcessorServiceImpl(reporterService = get()) }
+            single<ReporterService> { ReporterServiceImpl(loggingService = get()) }
             single<ReplProcessorService> { ReplProcessorServiceImpl(sourceProcessorService = get()) }
         }
 

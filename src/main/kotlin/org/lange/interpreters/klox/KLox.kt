@@ -1,44 +1,23 @@
 package org.lange.interpreters.klox
 
-import kotlin.system.exitProcess
+import org.koin.core.context.GlobalContext.startKoin
+import org.koin.dsl.module
 
 object KLox {
+
     fun main(args: Array<String>) {
-        when {
-            args.size > 1 -> {
-                println("Usage: klox [script]")
-                exitProcess(64)
-            }
-            args.size == 1 -> {
-                processFile(args[0])
-            }
-            else -> {
-                runREPL()
-            }
-        }
-    }
 
-    private fun runREPL() {
-        fun readInLine(prompt: String = "> "): String? {
-            print(prompt)
-            return readLine()
+        val kLoxModule = module {
+            single<LoggingService> { LoggingServiceImpl() }
+            single<FileProcessorService> { FileProcessorServiceImpl(loggingService = get()) }
+            single<SourceProcessorService> { SourceProcessorServiceImpl() }
+            single<ReplProcessorService> { ReplProcessorServiceImpl(sourceProcessorService = get()) }
         }
 
-        var continueLoop = true
-        while (continueLoop) {
-            readInLine()?.takeIf { it.isNullOrBlank().not() }?.let { source ->
-                runSource(source = source)
-            } ?: run {
-                continueLoop = false
-            }
+        startKoin {
+            modules(kLoxModule)
         }
-    }
 
-    private fun runSource(source: String) {
-        println("Run: $source")
-    }
-
-    private fun processFile(path: String) {
-        println("Running Source Path: $path")
+        KLoxApplication().main(args = args)
     }
 }

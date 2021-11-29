@@ -2,6 +2,8 @@ package org.lange.interpreters.klox.lang
 
 import org.lange.interpreters.klox.ReporterService
 import org.lange.interpreters.klox.lang.Constants.DIGIT_RANGE
+import org.lange.interpreters.klox.lang.Constants.isAlpha
+import org.lange.interpreters.klox.lang.Constants.isAlphaNumeric
 import org.lange.interpreters.klox.lang.Constants.isDigit
 import org.lange.interpreters.klox.lang.Constants.match
 
@@ -31,7 +33,7 @@ class SourceScanner(
     }
 
     private fun scanToken() {
-        when (advance()) {
+        when (val c = advance()) {
             Constants.LEFT_PARENTHESIS -> addToken(type = TokenType.LEFT_PARENTHESIS)
             Constants.RIGHT_PARENTHESIS -> addToken(type = TokenType.RIGHT_PARENTHESIS)
             Constants.LEFT_BRACE -> addToken(type = TokenType.LEFT_BRACE)
@@ -91,10 +93,14 @@ class SourceScanner(
 
             in DIGIT_RANGE -> number()
 
-            else -> reporterService.error(
-                line = line,
-                message = "Unexpected character."
-            )
+            else ->
+                when {
+                    c.isAlpha() -> identifier()
+                    else -> reporterService.error(
+                        line = line,
+                        message = "Unexpected character: ${peek()}"
+                    )
+                }
         }
     }
 
@@ -165,6 +171,11 @@ class SourceScanner(
         }
     }
 
+    private fun identifier() {
+        while (peek().isAlphaNumeric()) advance()
+        addToken(type = TokenType.IDENTIFIER)
+    }
+
     private fun <R> matcher(expected: Char, matchHandler: () -> R, unMatchHandler: () -> R): R =
         if (matched(expected = expected)) {
             advance()
@@ -185,9 +196,7 @@ class SourceScanner(
 
     private fun isAtEnd(offset: Int = 0): Boolean = current + offset >= source.length
 
-    private fun advance(): Char = with(current++) {
-        sourceCharArray.elementAt(index = this)
-    }
+    private fun advance(): Char = sourceCharArray.elementAt(index = current++)
 
     private fun asToken(type: TokenType, lexeme: String = parseLexeme(), literal: Any? = null): Token =
         Token(

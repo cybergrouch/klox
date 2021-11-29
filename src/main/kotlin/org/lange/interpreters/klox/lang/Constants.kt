@@ -31,7 +31,21 @@ object Constants {
     const val DIGIT_9 = '9'
     val DIGIT_RANGE = DIGIT_0..DIGIT_9
 
+    const val LETTER_A_LOWERCASE = 'a'
+    const val LETTER_Z_LOWERCASE = 'z'
+    const val LETTER_A_UPPERCASE = 'A'
+    const val LETTER_Z_UPPERCASE = 'Z'
+    const val UNDERSCORE = '_'
+
     fun Char.isDigit(): Boolean = this in DIGIT_RANGE
+
+    fun Char.isAlpha(): Boolean =
+        this in LETTER_A_LOWERCASE..LETTER_Z_LOWERCASE ||
+            this in LETTER_A_UPPERCASE..LETTER_Z_UPPERCASE ||
+            this.match(UNDERSCORE)
+
+    fun Char.isAlphaNumeric(): Boolean =
+        this.isDigit() || this.isAlpha()
 
     fun Char.match(expected: Char): Boolean = (this == expected)
 }
